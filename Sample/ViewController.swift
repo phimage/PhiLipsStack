@@ -29,7 +29,9 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return Entity.count()
+        return Entity.count { (error) -> () in
+            NSLog("Error when counting entity: \(error), \(error.userInfo)")
+        }
     }
  
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {

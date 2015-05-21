@@ -7,14 +7,14 @@
 	<key>IDESourceControlProjectIdentifier</key>
 	<string>F1669B5F-34E0-4965-8B07-9D9E6252269A</string>
 	<key>IDESourceControlProjectName</key>
-	<string>project</string>
+	<string>PhiLipsStack</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
 		<key>750B102757D7E2A8690BF78CA0BD13400F2765FE</key>
 		<string>https://github.com/phimage/PhiLipsStack.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>PhiLipsStack.xcodeproj/project.xcworkspace</string>
+	<string>PhiLipsStack.xcodeproj</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
 		<key>750B102757D7E2A8690BF78CA0BD13400F2765FE</key>

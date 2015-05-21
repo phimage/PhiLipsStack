@@ -1,4 +1,4 @@
-# PhiLipsStack - ϕ:lips:
+# PhiLipsStack - ϕ:lips: - embrace [CoreData](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataOverview.html#//apple_ref/doc/uid/TP40010398-CH28-SW1)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat
             )](http://mit-license.org)
 [![Platform](http://img.shields.io/badge/platform-iOS/MacOS-lightgrey.svg?style=flat
@@ -9,114 +9,143 @@
            )](https://github.com/phimage/Prephirences/issues)
 
 [<img align="left" src="/logo-128x128.png" hspace="20">](#logo)
-PhiLipsStack framework provide a default `NSManagedObjectContext` and functions on `NSManagedObject` which use by default this context
+PhiLipsStack aims to create a [CoreData stack](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataStack.html#//apple_ref/doc/uid/TP40010398-CH25-SW1) from [model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) to [context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) and provide some functions on your [managed object](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObject.html) which use by default the stack context
 
-## Stack
-A stack is composed of three element, the `managedObjectModel`, `persistentStoreCoordinator` and the `managedObjectContext`
+```swift
+let context = NSManagedObjectContext.defaultContext
+var object: MyManagedObject = MyManagedObject.create()
+object.delete()
+```
 
-### The model
-The stack initialize, according to its type and optionnaly an url, the `NSManagedObjectModel`
+## Contents ##
+- [Stack and optional configuration](#stack-and-optional-configuration)
+- [Play with managed objects: CRUD](#play-with-managed-objects-crud)
+- [Setup](#setup)
+- [Licence](#licence)
+- [Logo](#logo)
 
-By default the application name is used for your model name ie. model file `MyAppName.xcdatamodel`
+## Stack and optional configuration ##
+A `CoreDataStack` is composed of three elements, the `managedObjectModel`, the `persistentStoreCoordinator` and the `managedObjectContext`
 
+```swift
+var myStack = CoreDataStack(storeType: .SQLite, storeURL: anURL)
+```
+A default one is accessible with SQLite type, and with url your application directory
+```swift
+CoreDataStack.defaultStack
+```
+
+### [The model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectModel.html)
+
+The stack use your application name as model name (ex: model file `MyAppName.xcdatamodel`)
 If your model have another name, you can set your own model name by calling `myStack.modelName = "MyModelName"`
 ```swift
 CoreDataStack.defaultStack.modelName = "MyModelName"
 ```
-:warning This must be done before requesting any of `managedObjectContext`, `persistentStoreCoordinator`, `managedObjectModel`
+:warning: This must be done before requesting any of `managedObjectContext`, `persistentStoreCoordinator`, `managedObjectModel` or calling framework functions
 
-### The persistance coordinator
+### [The persistance store coordinator](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/persistentStoreCoordinator.html)
 
-TODO automigrate option 
-TODO if not able to load data removeStore automatically to recreate one
+By default the persistance store coordinatore is initialized with [automigrate option](https://developer.apple.com/library/mac/documentation/Cocoa/Reference/CoreDataFramework/Classes/NSPersistentStoreCoordinator_Class/index.html#//apple_ref/doc/constant_group/Migration_Options)
+*To change this behaviour set stack `autoMigrate` to false*
 
-### The context
+If not able to load data from current persistance files, all data are removed (`removeStore()`) and new empty files are created.
+*To change this behaviour set `removeIncompatibleStore` to false*
 
-The default context is the `managedObjectContext` attribute of default stack `CoreDataStack.defaultStack` and can be acceded that way
+### [The managed object context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html)
+
+The default context can be acceded that way
 ```swift
 NSManagedObjectContext.defaultContext
 ```
+*This default context is the `managedObjectContext` attribute of default stack `CoreDataStack.defaultStack`. So you can change the defaultStack by your own if necessary*
 
-
-## Play with managed objects
+## Play with managed objects: CRUD ##
 
 ### Create
-
-Your  `NSManagedObject` must contains @objc(class name) or you must override `entityName` class var
+Your  `NSManagedObject` must contains `@objc(classname)` or you must override `entityName` class var
 
 ```swift
-@objc(Entity)
-class Entity: NSManagedObject {
-@NSManaged var title: String
-@NSManaged var valid: NSNumber
+@objc(MyEntity)
+class MyEntity: NSManagedObject {
+	@NSManaged var title: String
+	@NSManaged var valid: NSNumber
 }
 ```
-You should use [mogenerator](https://github.com/rentzsch/mogenerator) to generate your `NSManagedObject`
+*You could use the command line tool [mogenerator](https://github.com/rentzsch/mogenerator) to generate your `NSManagedObject` from model*
 
+Then to create an object in default context
 ```swift
-var entity: Entity = Entity.create()
+var entity: MyEntity = MyEntity.create()
+```
+To create only if not exists, two useful functions
+```swift
+var entity: MyEntity = MyEntity.findFirstOrCreate()
+var anotherEntity: MyEntity.findFirstOrCreateWithPredicate(aPredicate)
 ```
 
-### Get/Fetch
+### Read/Fetch
 Get all object of one type
 ```swift
-if let entities = Entity.all() ? [Entity] { .. }
-
-let entityCount = Entity.count()
+if let entities = MyEntity.all() ? [Entity] { .. }
+let entityCount = MyEntity.count()
 ```
-Some filtering using `NSPredicate`
+Some basic filtering using `NSPredicate`
 ```
-if let entities = Entity. find(predicate) ? [Entity] { .. }
-let entityCount = Entity.count(predicate)
-
+if let entities = MyEntity.find(predicate) ? [Entity] { .. }
+let entityCount = MyEntity.count(predicate)
+```
+For more advanced fetch with predicates, you should use [QueryKit](https://github.com/QueryKit/QueryKit).
+```swift
+let myEntityQuerySet = QuerySet<MyEntity>(NSManagedObjectContext.defaultContext, MyEntity.entityName)
 ```
 
-For more advanced fetch with predicates, you should use [QueryKit](https://github.com/QueryKit/QueryKit)
+There is a mogerator templates for swift [here: machine.swift.motemplate](https://github.com/phimage/mogenerator-template)
 
-There is mogerator templates for swift [here: machine.swift.motemplate](https://github.com/phimage/mogenerator-template)
-
-### Save
-You can save immediatly on entity
+### Update and Save
+Update your objects as usual by modifying attributes and relations, then you can save immediately your object
 ```swift
 entity.save()
 ```
-but you can save the context when application will terminate or did enter background
+But it is recommanded to save the context when application will terminate or did enter background - see [application delegate example](/Sample/AppDelegate.swift)
 ```swift
 stack.save()
 ```
-
 ### Delete
+Delete object is as simple as following
 ```swift
 entity.delete()
-
 ```
-You can also delete all objects of one type
+You can also delete all objects of specific type
 ```swift
 Entity.deleteAll()
-
 ```
-
 ### Error handling
-Most of the functions provided by this framework allow to pass an error handler, a block : (NSError) -> Void
-TODO Example
+Most of the functions provided by this framework allow to pass an error handler, a block of type `(NSError) -> Void`
+
 ```swift
+entity.delete { (error) -> () in
 
+}
+Entity.find(NSPredicate(value: true)) { (error) -> () in
+
+}
 ```
-
 If no error handler is provided, you can access the last error handled by the stack
 ```swift
 if let error = myStack.lastError {..}
 ```
 
-At application start you can also check stack
+At application start you can also check stack validity (context not nil)
 ```swift
 if !myStack.valid() {
-   // application shutdown
+   // log and application shutdown
 }
-
+// or with error handler
+myStack.valid((error: NSError)  in {
+    // log and application shutdown
+}
 ```
-
- 
 # Setup #
 
 ## Using xcode project ##
@@ -159,3 +188,6 @@ SOFTWARE.
 Inspired by [apple swift logo](http://en.wikipedia.org/wiki/File:Apple_Swift_Logo.png)
 ## Why a logo?
 I like to see an image for each of my project when I browse them with [SourceTree](http://www.sourcetreeapp.com/)
+
+---
+Readme done with [Haroopad](https://github.com/rhiokim/haroopad)

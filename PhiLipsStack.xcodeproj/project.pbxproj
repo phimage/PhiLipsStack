@@ -47,8 +47,6 @@
 		C4D135EF1B0C920200832472 /* PhiLipsStackOSX.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PhiLipsStackOSX.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4D135F21B0C920200832472 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C4D135F31B0C920200832472 /* PhiLipsStackOSX.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PhiLipsStackOSX.h; sourceTree = "<group>"; };
-		C4D135FF1B0C920200832472 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		C4D136001B0C920200832472 /* PhiLipsStackOSXTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhiLipsStackOSXTests.swift; sourceTree = "<group>"; };
 		C4D136081B0C924100832472 /* NSManagedObject+PLS.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSManagedObject+PLS.swift"; sourceTree = "<group>"; };
 		C4D136091B0C924100832472 /* NSManagedObjectContext+PLS.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+PLS.swift"; sourceTree = "<group>"; };
 		C4D1360A1B0C924100832472 /* PhiLipsStack.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhiLipsStack.swift; sourceTree = "<group>"; };
@@ -106,7 +104,6 @@
 				C4D135D01B0C91ED00832472 /* PhiLipsStack */,
 				C4D135DD1B0C91ED00832472 /* PhiLipsStackTests */,
 				C4D135F01B0C920200832472 /* PhiLipsStackOSX */,
-				C4D135FD1B0C920200832472 /* PhiLipsStackOSXTests */,
 				C4D1361A1B0CB6F700832472 /* Sample */,
 				C4D135CF1B0C91ED00832472 /* Products */,
 			);
@@ -175,23 +172,6 @@
 			isa = PBXGroup;
 			children = (
 				C4D135F21B0C920200832472 /* Info.plist */,
-			);
-			name = "Supporting Files";
-			sourceTree = "<group>";
-		};
-		C4D135FD1B0C920200832472 /* PhiLipsStackOSXTests */ = {
-			isa = PBXGroup;
-			children = (
-				C4D136001B0C920200832472 /* PhiLipsStackOSXTests.swift */,
-				C4D135FE1B0C920200832472 /* Supporting Files */,
-			);
-			path = PhiLipsStackOSXTests;
-			sourceTree = "<group>";
-		};
-		C4D135FE1B0C920200832472 /* Supporting Files */ = {
-			isa = PBXGroup;
-			children = (
-				C4D135FF1B0C920200832472 /* Info.plist */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";

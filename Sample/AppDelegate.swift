@@ -26,30 +26,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         stack.verbose = true // in test/debug mode
 
         // Check stack consistant
-        if !stack.valid() {
-            if let error = stack.lastError {
-                NSLog("Unresolved error \(error), \(error.userInfo)")
-            }
-            abort()
+       let valid = stack.valid { (error) -> () in
+             NSLog("Unresolved error \(error), \(error.userInfo)")
         }
-        
-        // test code
-        var entity: Entity = Entity.create()
-        entity.attribute = "test"
-        entity.attribute1 = true
+        if valid {
+            // test code
+            var entity: Entity = Entity.create()
+            entity.attribute = "test"
+            entity.attribute1 = true
+            
+            /*entity.delete { (error) -> () in
+                
+            }*/
+            
+            Entity.find(NSPredicate(value: true)) { (error) -> () in
+                NSLog("find error \(error), \(error.userInfo)")
+            }
+        }
         
         return true
     }
 
     func applicationDidEnterBackground(application: UIApplication) {
-        stack.save(force: false, errorHandler : { (error: NSError) -> () in
-             NSLog("Unresolved error \(error), \(error.userInfo)")
+        stack.save(force: false, errorHandler : { (error) -> () in
+             NSLog("save error \(error), \(error.userInfo)")
         })
     }
 
     func applicationWillTerminate(application: UIApplication) {
-        stack.save(force: true) { (error: NSError) -> () in
-            NSLog("Unresolved error \(error), \(error.userInfo)")
+        stack.save(force: true) { (error) -> () in
+            NSLog("save error \(error), \(error.userInfo)")
         }
     }
 
