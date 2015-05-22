@@ -1,15 +1,11 @@
 # PhiLipsStack - ϕ:lips: - embrace [CoreData](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataOverview.html#//apple_ref/doc/uid/TP40010398-CH28-SW1)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat
-            )](http://mit-license.org)
-[![Platform](http://img.shields.io/badge/platform-iOS/MacOS-lightgrey.svg?style=flat
-             )](https://developer.apple.com/resources/)
-[![Language](http://img.shields.io/badge/language-swift-orange.svg?style=flat
-             )](https://developer.apple.com/swift)
-[![Issues](https://img.shields.io/github/issues/phimage/PhiLipsStack.svg?style=flat
+            )](http://mit-license.org) [![Platform](http://img.shields.io/badge/platform-iOS/MacOS-lightgrey.svg?style=flat
+             )](https://developer.apple.com/resources/) [![Language](http://img.shields.io/badge/language-swift-orange.svg?style=flat
+             )](https://developer.apple.com/swift) [![Issues](https://img.shields.io/github/issues/phimage/PhiLipsStack.svg?style=flat
            )](https://github.com/phimage/Prephirences/issues)
 
-[<img align="left" src="/logo-128x128.png" hspace="20">](#logo)
-PhiLipsStack aims to create a [CoreData stack](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataStack.html#//apple_ref/doc/uid/TP40010398-CH25-SW1) from [model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) to [context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) and provide some functions on your [managed object](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObject.html) which use by default the stack context
+[<img align="left" src="logo-128x128.png" hspace="20">](#logo) PhiLipsStack aims to create a [CoreData stack](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataStack.html#//apple_ref/doc/uid/TP40010398-CH25-SW1) from [model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) to [context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) and provide some functions on your [managed object](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObject.html) which use by default the default stack context but not only
 
 ```swift
 let context = NSManagedObjectContext.defaultContext
@@ -25,17 +21,22 @@ object.delete()
 - [Logo](#logo)
 
 ## Stack and optional configuration ##
-A `CoreDataStack` is composed of three elements, the `managedObjectModel`, the `persistentStoreCoordinator` and the `managedObjectContext`
+A `CoreDataStack` is composed of three elements
+- [`managedObjectModel`](#the-model)
+- [`persistentStoreCoordinator`](#the-persistance-store-coordinator)
+- [`managedObjectContext`](#the-managed-object-context)
+
+and initialized with persistance store type and optionnal URL
 
 ```swift
 var myStack = CoreDataStack(storeType: .SQLite, storeURL: anURL)
 ```
-A default one is accessible with SQLite type, and with url your application directory
+A default one is accessible with SQLite type and your application directory
 ```swift
 CoreDataStack.defaultStack
 ```
 
-### [The model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectModel.html)
+### [The model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectModel.html) ###
 
 The stack use your application name as model name (ex: model file `MyAppName.xcdatamodel`)
 If your model have another name, you can set your own model name by calling `myStack.modelName = "MyModelName"`
@@ -44,7 +45,7 @@ CoreDataStack.defaultStack.modelName = "MyModelName"
 ```
 :warning: This must be done before requesting any of `managedObjectContext`, `persistentStoreCoordinator`, `managedObjectModel` or calling framework functions
 
-### [The persistance store coordinator](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/persistentStoreCoordinator.html)
+### [The persistance store coordinator](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/persistentStoreCoordinator.html) ###
 
 By default the persistance store coordinatore is initialized with [automigrate option](https://developer.apple.com/library/mac/documentation/Cocoa/Reference/CoreDataFramework/Classes/NSPersistentStoreCoordinator_Class/index.html#//apple_ref/doc/constant_group/Migration_Options)
 *To change this behaviour set stack `autoMigrate` to false*
@@ -52,9 +53,9 @@ By default the persistance store coordinatore is initialized with [automigrate o
 If not able to load data from current persistance files, all data are removed (`removeStore()`) and new empty files are created.
 *To change this behaviour set `removeIncompatibleStore` to false*
 
-### [The managed object context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html)
+### [The managed object context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) ###
 
-The default context can be acceded that way
+The default context can be accessed by class variable on `NSManagedObjectContext`
 ```swift
 NSManagedObjectContext.defaultContext
 ```
@@ -76,7 +77,8 @@ class MyEntity: NSManagedObject {
 
 Then to create an object in default context
 ```swift
-var entity: MyEntity = MyEntity.create()
+var entity = MyEntity.create()
+var entity = MyEntity.createWithAttribute([key:value])
 ```
 To create only if not exists, two useful functions
 ```swift
@@ -184,10 +186,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-# Logo #
+# Misc #
+![haroopad icon](http://pad.haroopress.com/assets/images/logo-small.png) Readme done with [Haroopad](https://github.com/rhiokim/haroopad)
+## Logo ##
 Inspired by [apple swift logo](http://en.wikipedia.org/wiki/File:Apple_Swift_Logo.png)
-## Why a logo?
+### Why a logo?
 I like to see an image for each of my project when I browse them with [SourceTree](http://www.sourcetreeapp.com/)
-
----
-Readme done with [Haroopad](https://github.com/rhiokim/haroopad)
+## Core Data Combo
+![](CoreDataCombo.png)
+*mogenerator, PhiLipsStack, QueryKit*

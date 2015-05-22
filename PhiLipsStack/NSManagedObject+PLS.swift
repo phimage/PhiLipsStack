@@ -16,12 +16,18 @@ public extension NSManagedObject {
  
     // MARK: class functions
 
-    public class func fetchRequest() -> NSFetchRequest {
-        return NSFetchRequest(entityName: self.pls_entityName)
+    public class func createFetchRequest(predicate: NSPredicate? = nil, sortDescriptors: [NSSortDescriptor]? = nil) -> NSFetchRequest {
+        let request = NSFetchRequest(entityName: self.pls_entityName)
+        request.predicate = predicate
+        request.sortDescriptors = sortDescriptors
+        return request
     }
     
+    
     public class var entityName: String { // subclass can define the value of entityName
-        return NSStringFromClass(self)
+        var name = NSStringFromClass(self)
+        name = name.componentsSeparatedByString(".").last
+        return name
     }
     
     public class var pls_entityName: String {
@@ -34,10 +40,18 @@ public extension NSManagedObject {
 
     //MARK: Entity creation
    
-    public class func create<T: NSManagedObject>(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> T {
+    public class func create(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> Self {
         let entityDescription = pls_entity(managedObjectContext: context)
-        var obj = NSManagedObject(entity: entityDescription!, insertIntoManagedObjectContext: context)
-        return obj as! T
+        var obj = self(entity: entityDescription!, insertIntoManagedObjectContext: context)
+        return obj
+    }
+    
+    public class func createWithAttributes(attributes: [NSObject : AnyObject], context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> Self {
+        let object = create(context: context)
+        if attributes.count > 0 {
+            object.setValuesForKeysWithDictionary(attributes)
+        }
+        return object
     }
     
     public class func findFirstOrCreate<T: NSManagedObject>(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, error: NSErrorPointer = nil) -> T {
@@ -45,12 +59,11 @@ public extension NSManagedObject {
     }
     
     public class func findFirstOrCreateWithPredicate<T: NSManagedObject>(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> T {
-
-        let fetchRequest = self.fetchRequest()
+        
+        let fetchRequest = self.createFetchRequest(predicate: predicate)
         fetchRequest.fetchLimit = 1
-        fetchRequest.predicate = predicate
         fetchRequest.entity = pls_entity(managedObjectContext: context)
-
+        
         var fetchedObjects: [AnyObject]?
         context.performBlockAndWait({ () -> Void in
             fetchedObjects = self.fetch(fetchRequest, context: context, errorHandler: errorHandler)
@@ -58,10 +71,10 @@ public extension NSManagedObject {
         if let array = fetchedObjects, firstObject = array.first as? T {
             return firstObject
         }
-        let obj: T = create(context: context)
-        return obj
+        let object: T = (create(context: context) as? T)!
+        return object
     }
-    
+
     //MARK: context method
     
     public func delete(errorHandler: ErrorHandler? = nil) -> Bool {
@@ -75,8 +88,16 @@ public extension NSManagedObject {
     }
 
     public class func deleteAll(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) {
-        if let all = self.all(context: context, errorHandler: errorHandler) {
-            for o in all {
+        if let objects = self.all(context: context, errorHandler: errorHandler) {
+            for o in objects {
+                o.delete(errorHandler: errorHandler)
+            }
+        }
+    }
+    
+    public class func deleteAllWithPredicate(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) {
+        if let objects = self.find(predicate, context: context, errorHandler: errorHandler) {
+            for o in objects {
                 o.delete(errorHandler: errorHandler)
             }
         }
@@ -102,12 +123,11 @@ public extension NSManagedObject {
     //MARK: fetch
     
     public class func all(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [NSManagedObject]? {
-        return self.fetch(self.fetchRequest(), context: context, errorHandler: errorHandler)
+        return self.fetch(self.createFetchRequest(), context: context, errorHandler: errorHandler)
     }
 
     public class func find(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [NSManagedObject]? {
-        var request = self.fetchRequest()
-        request.predicate = predicate
+        var request = self.createFetchRequest(predicate: predicate)
         return self.fetch(request, context: context, errorHandler: errorHandler)
     }
     
@@ -119,10 +139,9 @@ public extension NSManagedObject {
     }
 
     public class func count(predicate : NSPredicate? = nil, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
-        var fetchRequest = self.fetchRequest()
+        var fetchRequest = self.createFetchRequest(predicate: predicate)
         fetchRequest.includesPropertyValues = false
         fetchRequest.includesSubentities = false
-        fetchRequest.predicate = predicate
         fetchRequest.propertiesToFetch = []
 
         return count(fetchRequest, context:context, errorHandler: errorHandler)
@@ -152,10 +171,9 @@ public extension NSManagedObject {
             expressionsDescription.append(expressionDescription);
         }
 
-        var fetchRequest = self.fetchRequest()
+        var fetchRequest = self.createFetchRequest(predicate: predicate)
         fetchRequest.propertiesToFetch = expressionsDescription
         fetchRequest.resultType = NSFetchRequestResultType.DictionaryResultType
-        fetchRequest.predicate = predicate
         var results = [AnyObject]();
         var resultValue = [Double]();
         context.performBlockAndWait({ () -> Void in

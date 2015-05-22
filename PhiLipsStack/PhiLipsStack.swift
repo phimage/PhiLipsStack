@@ -125,8 +125,6 @@ public class CoreDataStack {
         return nil
         }()
 
-    
-    
     // MARK: handle errors
     
     public func valid(errorHandler: ErrorHandler? = nil) -> Bool {
@@ -169,18 +167,7 @@ public class CoreDataStack {
         return false
     }
 
-    public func managedObjectForURIRepresentation(uri: NSURL) -> NSManagedObject? {
-        if let psc = self.persistentStoreCoordinator,
-            objectID = psc.managedObjectIDForURIRepresentation(uri),
-            moc = managedObjectContext
-        {
-            return moc.objectWithID(objectID)
-        }
-        return nil
-    }
-
     //MARK: try to remove the store
-
     public func removeStore(errorHandler: ErrorHandler? = nil) -> Bool {
         if let url = self.storeURL where self.storeType == CoreDataStoreType.SQLite {
 
@@ -193,6 +180,58 @@ public class CoreDataStack {
             }
         }
         return true
+    }
+    
+   /* Delete all managed object */
+    func deleteAll() {
+        if let mom = managedObjectModel, moc = managedObjectContext {
+            for entity in mom.entities as! [NSEntityDescription] {
+                if let entityType = NSClassFromString(entity.managedObjectClassName) as? NSManagedObject.Type {
+                    entityType.deleteAll(context: moc)
+                }
+            }
+        }
+    }
+    
+    // MARK: Refresh
+    
+    public func managedObjectForURIRepresentation(uri: NSURL) -> NSManagedObject? {
+        if let psc = self.persistentStoreCoordinator,
+            objectID = psc.managedObjectIDForURIRepresentation(uri),
+            moc = managedObjectContext
+        {
+            return moc.objectWithID(objectID)
+        }
+        return nil
+    }
+
+    func refreshObjects(#objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+        if let moc = managedObjectContext {
+            for objectID in objectIDS {
+                var error: NSError?
+                moc.performBlockAndWait({ () -> Void in
+                    if let object = moc.existingObjectWithID(objectID, error: &error) {
+                        if !object.fault && error == nil {
+                            moc.refreshObject(object, mergeChanges: mergeChanges)
+                        } else {
+                            self.handleError(error, errorHandler: errorHandler)
+                        }
+                    }
+                })
+            }
+        }
+    }
+    
+    func refreshAllObjects(#mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+        if let moc = managedObjectContext {
+            var objectIDS = [NSManagedObjectID]()
+            for object in moc.registeredObjects {
+                if let managedObject = object as? NSManagedObject {
+                    objectIDS.append(managedObject.objectID)
+                }
+            }
+            self.refreshObjects(objectIDS: objectIDS, mergeChanges: mergeChanges, errorHandler: errorHandler)
+        }
     }
 
     // MARK: log
@@ -244,11 +283,13 @@ public class CoreDataStack {
         #endif
         return dir
     }
+    
+    class func storeURLForName(name: String) -> NSURL {
+        return self.storeURL.URLByAppendingPathComponent("\(name).sqlite")
+    }
 
     private static var sqliteStoreURL: NSURL {
-        let dbName = self.applicationName + ".sqlite"
-        return self.storeURL.URLByAppendingPathComponent(dbName)
-        
+        return storeURLForName(self.applicationName + ".sqlite")
     }
 
     private class func ensureDirectoryCreatedAtURL(dir: NSURL) {
