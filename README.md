@@ -3,7 +3,7 @@
             )](http://mit-license.org) [![Platform](http://img.shields.io/badge/platform-iOS/MacOS-lightgrey.svg?style=flat
              )](https://developer.apple.com/resources/) [![Language](http://img.shields.io/badge/language-swift-orange.svg?style=flat
              )](https://developer.apple.com/swift) [![Issues](https://img.shields.io/github/issues/phimage/PhiLipsStack.svg?style=flat
-           )](https://github.com/phimage/Prephirences/issues)
+           )](https://github.com/phimage/Prephirences/issues) [![Cocoapod](http://img.shields.io/cocoapods/v/PhiLipsStack.svg?style=flat)](http://cocoadocs.org/docsets/PhiLipsStack/)
 
 [<img align="left" src="logo-128x128.png" hspace="20">](#logo) PhiLipsStack aims to create a [CoreData stack](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataStack.html#//apple_ref/doc/uid/TP40010398-CH25-SW1) from [model](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) to [context](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObjectContext.html) and provide some functions on your [managed object](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/managedObject.html) which use by default the default stack context but not only
 
@@ -12,6 +12,7 @@ let context = NSManagedObjectContext.defaultContext
 var object: MyManagedObject = MyManagedObject.create()
 object.delete()
 ```
+With PhiLipsStack you should use [QueryKit](https://github.com/QueryKit/QueryKit) to create query and the command line tool [mogenerator](https://github.com/rentzsch/mogenerator) to generate your `NSManagedObject` from model
 
 ## Contents ##
 - [Stack and optional configuration](#stack-and-optional-configuration)
@@ -157,7 +158,7 @@ myStack.valid((error: NSError)  in {
 
 ## Using [cocoapods](http://cocoapods.org/) ##
 
-Add `pod 'PhiLipsStack', :git => 'https://github.com/phimage/PhiLipsStack.git'` to your `Podfile` and run `pod install`. 
+Add `pod 'PhiLipsStack'` to your `Podfile` and run `pod install`. 
 
 Add `use_frameworks!` to the end of the `Podfile`.
 
