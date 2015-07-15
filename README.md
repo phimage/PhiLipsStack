@@ -196,3 +196,7 @@ I like to see an image for each of my project when I browse them with [SourceTre
 ## Core Data Combo
 ![](CoreDataCombo.png)
 *mogenerator, PhiLipsStack, QueryKit*
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/phimage/philipsstack/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
