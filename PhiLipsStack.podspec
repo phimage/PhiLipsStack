@@ -2,7 +2,7 @@ Pod::Spec.new do |s|
 
 # ―――  Spec Metadata  ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
 s.name         = "PhiLipsStack"
-s.version      = "1.0.0"
+s.version      = "2.0.0"
 s.summary      = "A Swift library to init Core Data Stack"
 s.description  = <<-DESC
 PhiLipsStack is a Swift library useful CoreDataStack object that provides
@@ -25,7 +25,7 @@ s.ios.deployment_target = "8.0"
 s.osx.deployment_target = "10.9"
 
 # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
-s.source       = { :git => "https://github.com/phimage/PhiLipsStack.git", :tag => '1.0.0' }
+s.source       = { :git => "https://github.com/phimage/PhiLipsStack.git", :tag => '2.0.0' }
 
 # ――― Source Code ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
 
