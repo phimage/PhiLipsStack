@@ -30,7 +30,7 @@ public extension NSManagedObjectContext {
             return nil
         }
         set {
-            objc_setAssociatedObject(self, Key.coreDataStack, newValue, UInt(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, Key.coreDataStack, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 

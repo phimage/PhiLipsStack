@@ -89,8 +89,11 @@ public class CoreDataStack {
             var coordinator: NSPersistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
             var error: NSError? = nil
             
-            var options = CoreDataStack.storeOptions(automigrate: self.autoMigrate)
-            if coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options, error: &error) == nil {
+            var options = CoreDataStack.storeOptions(self.autoMigrate)
+            do {
+                try coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options)
+            } catch var error2 as NSError {
+                error = error2
                 self.log("Unresolved error \(error), \(error!.userInfo)")
                 
                 // Report any error we got.
@@ -101,16 +104,23 @@ public class CoreDataStack {
                     self.log("Will recreate store")
                     
                     options = CoreDataStack.storeOptions()
-                    if coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options, error: &error) == nil {
+                    do {
+                        try coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options)
+                    } catch var error1 as NSError {
+                        error = error1
                         self.lastError = self.createInitError(error)
                         self.log("Failed to recreate store, \(error), \(error!.userInfo)")
                         return nil
+                    } catch {
+                        fatalError()
                     }
                     self.log("Did recreate store")
                     return coordinator
                 }
                 
                 return nil
+            } catch {
+                fatalError()
             }
             return coordinator
         }
@@ -160,7 +170,14 @@ public class CoreDataStack {
     public func save(force: Bool = false, errorHandler: ErrorHandler? = nil) -> Bool {
         if let moc = self.managedObjectContext where (moc.hasChanges || force){
             var error: NSError?
-            let result = moc.save(&error)
+            let result: Bool
+            do {
+                try moc.save()
+                result = true
+            } catch let error1 as NSError {
+                error = error1
+                result = false
+            }
             CoreDataStack.handleError(moc, error: error, errorHandler: errorHandler)
             return result
         }
@@ -170,9 +187,9 @@ public class CoreDataStack {
     //MARK: try to remove the store
     public func removeStore(errorHandler: ErrorHandler? = nil) -> Bool {
         if let url = self.storeURL where self.storeType == CoreDataStoreType.SQLite {
-
-            if  let rawURL = url.absoluteString,
-                shmSidecar = NSURL(string: rawURL.stringByAppendingString("-shm")),
+            
+            let rawURL = url.absoluteString
+            if  let shmSidecar = NSURL(string: rawURL.stringByAppendingString("-shm")),
                 walSidecar: NSURL = NSURL(string: rawURL.stringByAppendingString("-wal")) {
                     return self.removeItemAtURL(url, errorHandler: errorHandler) &&
                         self.removeItemAtURL(shmSidecar, errorHandler: errorHandler) &&
@@ -185,9 +202,9 @@ public class CoreDataStack {
    /* Delete all managed object */
     func deleteAll() {
         if let mom = managedObjectModel, moc = managedObjectContext {
-            for entity in mom.entities as! [NSEntityDescription] {
+            for entity in mom.entities {
                 if let entityType = NSClassFromString(entity.managedObjectClassName) as? NSManagedObject.Type {
-                    entityType.deleteAll(context: moc)
+                    entityType.deleteAll(moc)
                 }
             }
         }
@@ -205,30 +222,33 @@ public class CoreDataStack {
         return nil
     }
 
-    func refreshObjects(#objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+    func refreshObjects(objectIDS objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
         if let moc = managedObjectContext {
             for objectID in objectIDS {
                 var error: NSError?
                 moc.performBlockAndWait({ () -> Void in
-                    if let object = moc.existingObjectWithID(objectID, error: &error) {
+                    do {
+                        let object = try moc.existingObjectWithID(objectID)
                         if !object.fault && error == nil {
                             moc.refreshObject(object, mergeChanges: mergeChanges)
                         } else {
                             self.handleError(error, errorHandler: errorHandler)
                         }
+                    } catch let error1 as NSError {
+                        error = error1
+                    } catch {
+                        fatalError()
                     }
                 })
             }
         }
     }
     
-    func refreshAllObjects(#mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+    func refreshAllObjects(mergeChanges mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
         if let moc = managedObjectContext {
             var objectIDS = [NSManagedObjectID]()
-            for object in moc.registeredObjects {
-                if let managedObject = object as? NSManagedObject {
-                    objectIDS.append(managedObject.objectID)
-                }
+            for managedObject in moc.registeredObjects {
+                objectIDS.append(managedObject.objectID)
             }
             self.refreshObjects(objectIDS: objectIDS, mergeChanges: mergeChanges, errorHandler: errorHandler)
         }
@@ -237,14 +257,14 @@ public class CoreDataStack {
     // MARK: log
     internal func log(message: String) {
         if verbose {
-            println(message) // XXX maybe add handler to receive log message externally
+            print(message) // XXX maybe add handler to receive log message externally
         }
     }
     
     // MARK: private
 
     private func createInitError(error: NSError?) -> NSError {
-        let dict = CoreDataStack.buildUserInfo(description: "Failed to initialize the application's saved data",
+        let dict = CoreDataStack.buildUserInfo("Failed to initialize the application's saved data",
             failureReason: "There was an error creating or loading the application's saved data.",
             recoverySuggestion: "Remove application data directory",
             error: error)
@@ -276,9 +296,9 @@ public class CoreDataStack {
     
     public class var storeURL: NSURL {
         #if os(iOS)
-            let dir = self.fileManager.URLsForDirectory(NSSearchPathDirectory.DocumentDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last as! NSURL // XXX not safe
+            let dir = self.fileManager.URLsForDirectory(NSSearchPathDirectory.DocumentDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last! // XXX not safe
             #else
-            let dir = (self.fileManager.URLsForDirectory(NSSearchPathDirectory.ApplicationSupportDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last as! NSURL).URLByAppendingPathComponent(self.applicationName)
+            let dir = (self.fileManager.URLsForDirectory(NSSearchPathDirectory.ApplicationSupportDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last!).URLByAppendingPathComponent(self.applicationName)
             self.ensureDirectoryCreatedAtURL(dir)
         #endif
         return dir
@@ -293,18 +313,26 @@ public class CoreDataStack {
     }
 
     private class func ensureDirectoryCreatedAtURL(dir: NSURL) {
-        if let path = dir.absoluteString where !self.fileManager.fileExistsAtPath(path) {
-           self.fileManager.createDirectoryAtURL(dir, withIntermediateDirectories: true, attributes: nil, error: nil)
+        let path = dir.absoluteString
+        if !self.fileManager.fileExistsAtPath(path) {
+            do {
+                try self.fileManager.createDirectoryAtURL(dir, withIntermediateDirectories: true, attributes: nil)
+            } catch _ {
+            }
         }
     }
     
     private func removeItemAtURL(url: NSURL, errorHandler: ErrorHandler?) -> Bool {
         var deleteError: NSError?
-        if let urlString = url.absoluteString where !CoreDataStack.fileManager.fileExistsAtPath(urlString) {
+        let urlString = url.absoluteString
+        if !CoreDataStack.fileManager.fileExistsAtPath(urlString) {
             return true // do not fail if not exist
         }
-        if CoreDataStack.fileManager.removeItemAtURL(url, error: &deleteError) {
+        do {
+            try CoreDataStack.fileManager.removeItemAtURL(url)
             return true
+        } catch let error as NSError {
+            deleteError = error
         }
         self.handleError(deleteError, errorHandler: errorHandler)
         return false

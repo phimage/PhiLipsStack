@@ -31,7 +31,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         if valid {
             // test code
-            var entity: Entity = Entity.create()
+            let entity: Entity = Entity.create()
             entity.attribute = "test"
             entity.attribute1 = true
             
@@ -48,13 +48,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidEnterBackground(application: UIApplication) {
-        stack.save(force: false, errorHandler : { (error) -> () in
+        stack.save(false, errorHandler : { (error) -> () in
              NSLog("save error \(error), \(error.userInfo)")
         })
     }
 
     func applicationWillTerminate(application: UIApplication) {
-        stack.save(force: true) { (error) -> () in
+        stack.save(true) { (error) -> () in
             NSLog("save error \(error), \(error.userInfo)")
         }
     }
