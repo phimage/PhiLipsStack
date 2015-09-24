@@ -305,7 +305,7 @@ public class CoreDataStack {
     }
     
     class func storeURLForName(name: String) -> NSURL {
-        return self.storeURL.URLByAppendingPathComponent("\(name).sqlite")
+        return self.storeURL.URLByAppendingPathComponent(name)
     }
 
     private static var sqliteStoreURL: NSURL {
@@ -317,7 +317,8 @@ public class CoreDataStack {
         if !self.fileManager.fileExistsAtPath(path) {
             do {
                 try self.fileManager.createDirectoryAtURL(dir, withIntermediateDirectories: true, attributes: nil)
-            } catch _ {
+            } catch let error {
+                print("Error when creating directory \(dir): \(error)")
             }
         }
     }
