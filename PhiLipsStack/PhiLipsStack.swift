@@ -189,11 +189,13 @@ public class CoreDataStack {
         if let url = self.storeURL where self.storeType == CoreDataStoreType.SQLite {
             
             let rawURL = url.absoluteString
-            if  let shmSidecar = NSURL(string: rawURL.stringByAppendingString("-shm")),
-                walSidecar: NSURL = NSURL(string: rawURL.stringByAppendingString("-wal")) {
-                    return self.removeItemAtURL(url, errorHandler: errorHandler) &&
-                        self.removeItemAtURL(shmSidecar, errorHandler: errorHandler) &&
-                        self.removeItemAtURL(walSidecar, errorHandler: errorHandler)
+            var result = self.removeItemAtURL(url, errorHandler: errorHandler)
+
+            if  let shmSidecar = NSURL(string: rawURL.stringByAppendingString("-shm")) {
+                result = self.removeItemAtURL(shmSidecar, errorHandler: errorHandler) || result
+            }
+            if let walSidecar = NSURL(string: rawURL.stringByAppendingString("-wal")) {
+                result = self.removeItemAtURL(walSidecar, errorHandler: errorHandler) || result
             }
         }
         return true
@@ -325,7 +327,7 @@ public class CoreDataStack {
     
     private func removeItemAtURL(url: NSURL, errorHandler: ErrorHandler?) -> Bool {
         var deleteError: NSError?
-        let urlString = url.absoluteString
+        let urlString = url.path!
         if !CoreDataStack.fileManager.fileExistsAtPath(urlString) {
             return true // do not fail if not exist
         }
