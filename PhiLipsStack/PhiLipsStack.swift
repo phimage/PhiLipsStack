@@ -12,27 +12,8 @@ import CoreData
 public class CoreDataStack {
     
     // MARK: instances
-    public static var sqliteStack: CoreDataStack {
-        struct Static {
-            static var onceToken : dispatch_once_t = 0
-            static var instance : CoreDataStack? = nil
-        }
-        dispatch_once(&Static.onceToken) {
-            Static.instance = CoreDataStack(storeType: .SQLite, storeURL: CoreDataStack.sqliteStoreURL)
-        }
-        return Static.instance!
-    }
-    
-    public static var inMemoryStack: CoreDataStack {
-        struct Static {
-            static var onceToken : dispatch_once_t = 0
-            static var instance: CoreDataStack? = nil
-        }
-        dispatch_once(&Static.onceToken) {
-            Static.instance = CoreDataStack(storeType: .InMemory, storeURL: nil)
-        }
-        return Static.instance!
-    }
+    public static var sqliteStack = CoreDataStack(storeType: .SQLite, storeURL: CoreDataStack.sqliteStoreURL)
+    public static var inMemoryStack = CoreDataStack(storeType: .InMemory, storeURL: nil)
     
     public static var defaultStack: CoreDataStack = CoreDataStack.sqliteStack
     
