@@ -9,41 +9,41 @@
 import Foundation
 import CoreData
 
-public class CoreDataStack {
+open class CoreDataStack {
     
     // MARK: instances
-    public static var sqliteStack = CoreDataStack(storeType: .SQLite, storeURL: CoreDataStack.sqliteStoreURL)
-    public static var inMemoryStack = CoreDataStack(storeType: .InMemory, storeURL: nil)
+    open static var sqliteStack = CoreDataStack(storeType: .sqLite, storeURL: CoreDataStack.sqliteStoreURL)
+    open static var inMemoryStack = CoreDataStack(storeType: .inMemory, storeURL: nil)
     
-    public static var defaultStack: CoreDataStack = CoreDataStack.sqliteStack
+    open static var defaultStack: CoreDataStack = CoreDataStack.sqliteStack
     
     // MARK: attributes
-    public let storeType: CoreDataStoreType
-    public let storeURL: NSURL?
+    open let storeType: CoreDataStoreType
+    open let storeURL: URL?
     
     // MARK configurations
-    public var modelName: String = CoreDataStack.applicationName {
+    open var modelName: String = CoreDataStack.applicationName {
         didSet {
             assert(!modelLoaded, "Model already loaded in current stack")
         }
     }
-    public var modelBundle = NSBundle.mainBundle() // bundle to look for model
+    open var modelBundle = Bundle.main // bundle to look for model
     
-    public var autoMigrate: Bool = true // create PersistentStore with NSMigratePersistentStoresAutomaticallyOption
-    public var removeIncompatibleStore: Bool = true // remove store if failed to NSPersistentStoreCoordinator.addPersistentStoreWithType
-    public var verbose: Bool = false // log some information with println
+    open var autoMigrate: Bool = true // create PersistentStore with NSMigratePersistentStoresAutomaticallyOption
+    open var removeIncompatibleStore: Bool = true // remove store if failed to NSPersistentStoreCoordinator.addPersistentStoreWithType
+    open var verbose: Bool = false // log some information with println
 
-    public var dispatchErrorInQueue: Bool = true // dispatch error handler in queue to avoid wait of block execution
+    open var dispatchErrorInQueue: Bool = true // dispatch error handler in queue to avoid wait of block execution
 
     // where last error could be stored
-    public var lastError: NSError?
+    open var lastError: Error?
     
     // MARK: privates
-    private var modelLoaded: Bool = false
+    fileprivate var modelLoaded: Bool = false
 
     // MARK: init
     
-    public init(storeType: CoreDataStoreType, storeURL: NSURL?) {
+    public init(storeType: CoreDataStoreType, storeURL: URL?) {
         self.storeType = storeType
         self.storeURL = storeURL
     }
@@ -54,9 +54,9 @@ public class CoreDataStack {
 
     // MARK: Core Data stack
     
-    public lazy var managedObjectContext: NSManagedObjectContext! = {
+    open lazy var managedObjectContext: NSManagedObjectContext! = {
         if let coordinator = self.persistentStoreCoordinator {
-            var managedObjectContext = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
+            var managedObjectContext = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.mainQueueConcurrencyType)
             managedObjectContext.coreDataStack = self
             managedObjectContext.persistentStoreCoordinator = coordinator
             return managedObjectContext
@@ -64,7 +64,7 @@ public class CoreDataStack {
         return nil
         }()
     
-    public lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator? = {
+    open lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator? = {
         if let managedObjectModel = self.managedObjectModel {
         
             var coordinator: NSPersistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
@@ -72,7 +72,7 @@ public class CoreDataStack {
             
             var options = CoreDataStack.storeOptions(self.autoMigrate)
             do {
-                try coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options)
+                try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
             } catch var error2 as NSError {
                 error = error2
                 self.log("Unresolved error \(error), \(error!.userInfo)")
@@ -86,7 +86,7 @@ public class CoreDataStack {
                     
                     options = CoreDataStack.storeOptions()
                     do {
-                        try coordinator.addPersistentStoreWithType(self.storeType.key, configuration: nil, URL: self.storeURL, options: options)
+                        try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
                     } catch var error1 as NSError {
                         error = error1
                         self.lastError = self.createInitError(error)
@@ -108,17 +108,17 @@ public class CoreDataStack {
         return nil
         }()
 
-    public lazy var managedObjectModel: NSManagedObjectModel? = {
+    open lazy var managedObjectModel: NSManagedObjectModel? = {
         self.modelLoaded = true
-        if let modelURL = self.modelBundle.URLForResource("\(self.modelName).momd/\(self.modelName)", withExtension: "mom") {
-                return NSManagedObjectModel(contentsOfURL: modelURL)
+        if let modelURL = self.modelBundle.url(forResource: "\(self.modelName).momd/\(self.modelName)", withExtension: "mom") {
+                return NSManagedObjectModel(contentsOf: modelURL)
         }
         return nil
         }()
 
     // MARK: handle errors
     
-    public func valid(errorHandler: ErrorHandler? = nil) -> Bool {
+    open func valid(_ errorHandler: ErrorHandler? = nil) -> Bool {
         if self.managedObjectContext == nil {
             let error = lastError ?? createInitError(nil)
             errorHandler?(error)
@@ -127,17 +127,17 @@ public class CoreDataStack {
         return true
     }
     
-    public class func handleError(context: NSManagedObjectContext?, error: NSError?, errorHandler: ErrorHandler?) {
+    open class func handleError(_ context: NSManagedObjectContext?, error: Error?, errorHandler: ErrorHandler?) {
         if let stack = context?.coreDataStack {
             stack.handleError(error, errorHandler: errorHandler)
         }
     }
     
-    public func handleError(error: NSError?, errorHandler: ErrorHandler?) {
+    open func handleError(_ error: Error?, errorHandler: ErrorHandler?) {
         if let e = error {
             self.lastError = e
-            if let handler = errorHandler where self.dispatchErrorInQueue {
-                dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            if let handler = errorHandler , self.dispatchErrorInQueue {
+                DispatchQueue.main.async(execute: { () -> Void in
                     handler(e)
                 })
             } else {
@@ -148,8 +148,8 @@ public class CoreDataStack {
 
     // MARK: Core Data Saving Support
 
-    public func save(force: Bool = false, errorHandler: ErrorHandler? = nil) -> Bool {
-        if let moc = self.managedObjectContext where (moc.hasChanges || force){
+    open func save(_ force: Bool = false, errorHandler: ErrorHandler? = nil) -> Bool {
+        if let moc = self.managedObjectContext , (moc.hasChanges || force){
             var error: NSError?
             let result: Bool
             do {
@@ -166,54 +166,56 @@ public class CoreDataStack {
     }
 
     //MARK: try to remove the store
-    public func removeStore(errorHandler: ErrorHandler? = nil) -> Bool {
-        if let url = self.storeURL where self.storeType == CoreDataStoreType.SQLite {
+    open func removeStore(_ errorHandler: ErrorHandler? = nil) -> Bool {
+        if let url = self.storeURL , self.storeType == CoreDataStoreType.sqLite {
             
             let rawURL = url.absoluteString
-            var result = self.removeItemAtURL(url, errorHandler: errorHandler)
+            var result = self.removeItem(atURL: url, errorHandler: errorHandler)
 
-            if  let shmSidecar = NSURL(string: rawURL.stringByAppendingString("-shm")) {
-                result = self.removeItemAtURL(shmSidecar, errorHandler: errorHandler) || result
+            if  let shmSidecar = URL(string: rawURL + "-shm") {
+                result = self.removeItem(atURL:shmSidecar, errorHandler: errorHandler) || result
             }
-            if let walSidecar = NSURL(string: rawURL.stringByAppendingString("-wal")) {
-                result = self.removeItemAtURL(walSidecar, errorHandler: errorHandler) || result
+            if let walSidecar = URL(string: rawURL + "-wal") {
+                result = self.removeItem(atURL:walSidecar, errorHandler: errorHandler) || result
             }
         }
         return true
     }
     
    /* Delete all managed object */
-    func deleteAll() {
-        if let mom = managedObjectModel, moc = managedObjectContext {
+    func deleteAll() -> Int {
+        var result = 0
+        if let mom = managedObjectModel, let moc = managedObjectContext {
             for entity in mom.entities {
                 if let entityType = NSClassFromString(entity.managedObjectClassName) as? NSManagedObject.Type {
-                    entityType.deleteAll(moc)
+                    result = result + entityType.deleteAll(context: moc)
                 }
             }
         }
+        return result
     }
     
     // MARK: Refresh
     
-    public func managedObjectForURIRepresentation(uri: NSURL) -> NSManagedObject? {
+    open func managedObjectForURIRepresentation(_ uri: URL) -> NSManagedObject? {
         if let psc = self.persistentStoreCoordinator,
-            objectID = psc.managedObjectIDForURIRepresentation(uri),
-            moc = managedObjectContext
+            let objectID = psc.managedObjectID(forURIRepresentation: uri),
+            let moc = managedObjectContext
         {
-            return moc.objectWithID(objectID)
+            return moc.object(with: objectID)
         }
         return nil
     }
 
-    func refreshObjects(objectIDS objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+    func refreshObjects(objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
         if let moc = managedObjectContext {
             for objectID in objectIDS {
                 var error: NSError?
-                moc.performBlockAndWait({ () -> Void in
+                moc.performAndWait({ () -> Void in
                     do {
-                        let object = try moc.existingObjectWithID(objectID)
-                        if !object.fault && error == nil {
-                            moc.refreshObject(object, mergeChanges: mergeChanges)
+                        let object = try moc.existingObject(with: objectID)
+                        if !object.isFault && error == nil {
+                            moc.refresh(object, mergeChanges: mergeChanges)
                         } else {
                             self.handleError(error, errorHandler: errorHandler)
                         }
@@ -227,7 +229,7 @@ public class CoreDataStack {
         }
     }
     
-    func refreshAllObjects(mergeChanges mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
+    func refreshAllObjects(mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
         if let moc = managedObjectContext {
             var objectIDS = [NSManagedObjectID]()
             for managedObject in moc.registeredObjects {
@@ -238,7 +240,7 @@ public class CoreDataStack {
     }
 
     // MARK: log
-    internal func log(message: String) {
+    internal func log(_ message: String) {
         if verbose {
             print(message) // XXX maybe add handler to receive log message externally
         }
@@ -246,7 +248,7 @@ public class CoreDataStack {
     
     // MARK: private
 
-    private func createInitError(error: NSError?) -> NSError {
+    fileprivate func createInitError(_ error: NSError?) -> NSError {
         let dict = CoreDataStack.buildUserInfo("Failed to initialize the application's saved data",
             failureReason: "There was an error creating or loading the application's saved data.",
             recoverySuggestion: "Remove application data directory",
@@ -254,66 +256,67 @@ public class CoreDataStack {
         return NSError(domain: CoreDataStack.applicationIdentifier, code: 9999, userInfo: dict)
     }
 
-    private static func storeOptions(automigrate: Bool = false) -> [NSObject: AnyObject]
+    fileprivate static func storeOptions(_ automigrate: Bool = false) -> [AnyHashable: Any]
     {
         var sqliteOptions: [String: String] = [String: String] ()
         sqliteOptions["WAL"] = "journal_mode"
-        var options: [NSObject: AnyObject] = [NSObject: AnyObject] ()
-        options[NSMigratePersistentStoresAutomaticallyOption] = NSNumber(bool: true)
-        options[NSInferMappingModelAutomaticallyOption] = NSNumber(bool: automigrate)
+        var options: [AnyHashable: Any] = [AnyHashable: Any] ()
+        options[NSMigratePersistentStoresAutomaticallyOption] = NSNumber(value: true as Bool)
+        options[NSInferMappingModelAutomaticallyOption] = NSNumber(value: automigrate as Bool)
         options[NSSQLitePragmasOption] = sqliteOptions
         return options
     }
 
-    private static var applicationIdentifier: String {
-        return NSBundle.mainBundle().bundleIdentifier ?? "PhiLipsStack"
+    fileprivate static var applicationIdentifier: String {
+        return Bundle.main.bundleIdentifier ?? "PhiLipsStack"
     }
 
-    private static var applicationName : String {
-        return NSBundle.mainBundle().infoDictionary!["CFBundleName"] as? String  ?? "PhiLipsStack"
+    fileprivate static var applicationName : String {
+        return Bundle.main.infoDictionary!["CFBundleName"] as? String  ?? "PhiLipsStack"
     }
     
-    public class var fileManager: NSFileManager {
-        return NSFileManager.defaultManager()
+    open class var fileManager: FileManager {
+        return FileManager.default
     }
     
-    public class var storeURL: NSURL {
+    open class var storeURL: URL {
         #if os(iOS)
-            let dir = self.fileManager.URLsForDirectory(NSSearchPathDirectory.DocumentDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last! // XXX not safe
+            let dir = self.fileManager.urls(for: FileManager.SearchPathDirectory.documentDirectory, in: FileManager.SearchPathDomainMask.userDomainMask).last! // XXX not safe
             #else
-            let dir = (self.fileManager.URLsForDirectory(NSSearchPathDirectory.ApplicationSupportDirectory, inDomains: NSSearchPathDomainMask.UserDomainMask).last!).URLByAppendingPathComponent(self.applicationName)
-            self.ensureDirectoryCreatedAtURL(dir)
+            let parent = self.fileManager.urls(for: FileManager.SearchPathDirectory.applicationSupportDirectory, in: FileManager.SearchPathDomainMask.userDomainMask).last!
+            let dir = parent.appendingPathComponent(self.applicationName)
+            self.ensureDirectoryCreated(atURL: dir)
         #endif
         return dir
     }
     
-    class func storeURLForName(name: String) -> NSURL {
-        return self.storeURL.URLByAppendingPathComponent(name)
+    class func storeURL(forName name: String) -> URL {
+        return self.storeURL.appendingPathComponent(name)
     }
 
-    private static var sqliteStoreURL: NSURL {
-        return storeURLForName(self.applicationName + ".sqlite")
+    fileprivate static var sqliteStoreURL: URL {
+        return storeURL(forName: self.applicationName + ".sqlite")
     }
 
-    private class func ensureDirectoryCreatedAtURL(dir: NSURL) {
+    fileprivate class func ensureDirectoryCreated(atURL dir: URL) {
         let path = dir.absoluteString
-        if !self.fileManager.fileExistsAtPath(path) {
+        if !self.fileManager.fileExists(atPath: path) {
             do {
-                try self.fileManager.createDirectoryAtURL(dir, withIntermediateDirectories: true, attributes: nil)
+                try self.fileManager.createDirectory(at: dir, withIntermediateDirectories: true, attributes: nil)
             } catch let error {
                 print("Error when creating directory \(dir): \(error)")
             }
         }
     }
     
-    private func removeItemAtURL(url: NSURL, errorHandler: ErrorHandler?) -> Bool {
+    fileprivate func removeItem(atURL url: URL, errorHandler: ErrorHandler?) -> Bool {
         var deleteError: NSError?
-        let urlString = url.path!
-        if !CoreDataStack.fileManager.fileExistsAtPath(urlString) {
+        let urlString = url.path
+        if !CoreDataStack.fileManager.fileExists(atPath: urlString) {
             return true // do not fail if not exist
         }
         do {
-            try CoreDataStack.fileManager.removeItemAtURL(url)
+            try CoreDataStack.fileManager.removeItem(at: url)
             return true
         } catch let error as NSError {
             deleteError = error
@@ -322,12 +325,12 @@ public class CoreDataStack {
         return false
     }
     
-    private class func buildUserInfo(description: String = "", failureReason: String = "", recoverySuggestion: String = "", error: NSError? = nil) -> [String : AnyObject] {
+    fileprivate class func buildUserInfo(_ description: String = "", failureReason: String = "", recoverySuggestion: String = "", error: NSError? = nil) -> [String : AnyObject] {
         let dict: [String : AnyObject] = [
-            NSLocalizedDescriptionKey : description,
-            NSLocalizedFailureReasonErrorKey : failureReason,
-            NSLocalizedRecoverySuggestionErrorKey : recoverySuggestion,
-            NSUnderlyingErrorKey : error ?? ""
+            NSLocalizedDescriptionKey : description as AnyObject,
+            NSLocalizedFailureReasonErrorKey : failureReason as AnyObject,
+            NSLocalizedRecoverySuggestionErrorKey : recoverySuggestion as AnyObject,
+            NSUnderlyingErrorKey : error ?? "" as AnyObject
         ]
         return dict
     }
@@ -335,30 +338,29 @@ public class CoreDataStack {
 }
 
 public enum CoreDataStoreType {
-    case SQLite
-    case Binary
-    case InMemory
+    case sqLite
+    case binary
+    case inMemory
     #if os(OSX)
-    case XML
+    case xml
     #endif
     
     public var key: String {
         #if os(iOS)
             switch(self){
-            case SQLite: return NSSQLiteStoreType
-            case Binary: return NSBinaryStoreType
-            case InMemory: return NSInMemoryStoreType
+            case .sqLite: return NSSQLiteStoreType
+            case .binary: return NSBinaryStoreType
+            case .inMemory: return NSInMemoryStoreType
             }
-        #endif
-        #if os(OSX)
+        #elseif os(OSX)
             switch(self){
-            case SQLite: return NSSQLiteStoreType
-            case Binary: return NSBinaryStoreType
-            case InMemory: return NSInMemoryStoreType
-            case XML: return NSXMLStoreType
+            case .sqLite: return NSSQLiteStoreType
+            case .binary: return NSBinaryStoreType
+            case .inMemory: return NSInMemoryStoreType
+            case .xml: return NSXMLStoreType
             }
         #endif
     }
 }
 
-public typealias ErrorHandler = (NSError) -> ()
+public typealias ErrorHandler = (Error) -> ()

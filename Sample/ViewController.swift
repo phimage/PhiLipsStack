@@ -23,19 +23,21 @@ class ViewController: UIViewController {
 
 
 extension ViewController: UITableViewDelegate, UITableViewDataSource {
+ 
+
 
     var data: [Entity] {
-        return Entity.all() as? [Entity] ?? Array<Entity>()
+        return Entity.all() ?? [Entity]()
     }
     
-    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return Entity.count { (error) -> () in
-            NSLog("Error when counting entity: \(error), \(error.userInfo)")
-        }
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return Entity.count() /* { error in
+            print("Error when counting entity: \(error), \(error.userInfo)")
+        }*/
     }
- 
-    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "attribute")
+    
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.subtitle, reuseIdentifier: "attribute")
         cell.textLabel?.text = data[indexPath.row].attribute
         return cell
     }

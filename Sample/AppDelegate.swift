@@ -18,16 +18,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var stack: CoreDataStack {
         return CoreDataStack.defaultStack
     }
-
-    func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
+    
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         
         // configure if needed
         stack.modelName = "MyModel" // because model name is not application name
         stack.verbose = true // in test/debug mode
-
+        
         // Check stack consistant
-       let valid = stack.valid { (error) -> () in
-             NSLog("Unresolved error \(error), \(error.userInfo)")
+        let valid = stack.valid { (error) -> () in
+            print(error)
         }
         if valid {
             // test code
@@ -36,26 +36,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             entity.attribute1 = true
             
             /*entity.delete { (error) -> () in
-                
-            }*/
+             
+             }*/
             
-            Entity.find(NSPredicate(value: true)) { (error) -> () in
-                NSLog("find error \(error), \(error.userInfo)")
+            let entities: [Entity]? = Entity.find(for: NSPredicate(value: true))  { error in
+                print(error)
             }
+            print(entities)
         }
         
         return true
     }
-
-    func applicationDidEnterBackground(application: UIApplication) {
-        stack.save(false, errorHandler : { (error) -> () in
-             NSLog("save error \(error), \(error.userInfo)")
-        })
+    
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        let _ = stack.save(false) { error in
+            print(error)
+        }
     }
-
-    func applicationWillTerminate(application: UIApplication) {
-        stack.save(true) { (error) -> () in
-            NSLog("save error \(error), \(error.userInfo)")
+    
+    func applicationWillTerminate(_ application: UIApplication) {
+        let _ = stack.save(true) { error in
+            print(error)
         }
     }
 

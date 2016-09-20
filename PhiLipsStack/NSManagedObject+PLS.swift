@@ -16,8 +16,8 @@ public extension NSManagedObject {
  
     // MARK: class functions
 
-    public class func createFetchRequest(predicate: NSPredicate? = nil, sortDescriptors: [NSSortDescriptor]? = nil) -> NSFetchRequest {
-        let request = NSFetchRequest(entityName: self.pls_entityName)
+    public class func createFetchRequest<ResultType : NSFetchRequestResult>(_ predicate: NSPredicate? = nil, sortDescriptors: [NSSortDescriptor]? = nil) -> NSFetchRequest<ResultType> {
+        let request = NSFetchRequest<ResultType>(entityName: self.pls_entityName)
         request.predicate = predicate
         request.sortDescriptors = sortDescriptors
         return request
@@ -26,7 +26,7 @@ public extension NSManagedObject {
     
     public class var entityName: String { // subclass can define the value of entityName
         var name = NSStringFromClass(self)
-        name = name.componentsSeparatedByString(".").last!
+        name = name.components(separatedBy: ".").last!
         return name
     }
     
@@ -34,54 +34,55 @@ public extension NSManagedObject {
         return self.entityName
     }
     
-    public class func pls_entity(managedObjectContext: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> NSEntityDescription! {
-        return NSEntityDescription.entityForName(self.pls_entityName, inManagedObjectContext: managedObjectContext)
+    public class func pls_entity(_ managedObjectContext: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> NSEntityDescription! {
+        return NSEntityDescription.entity(forEntityName: self.pls_entityName, in: managedObjectContext)
     }
 
     //MARK: Entity creation
    
     public class func create(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> Self {
         let entityDescription = pls_entity(context)
-        let obj = self.init(entity: entityDescription!, insertIntoManagedObjectContext: context)
+     
+        let obj = self.init(entity: entityDescription!, insertInto: context)
         return obj
     }
     
-    public class func createWithAttributes(attributes: [String : AnyObject], context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> Self {
-        let object = create(context)
+    public class func create(with attributes: [String : AnyObject], context: NSManagedObjectContext = NSManagedObjectContext.defaultContext) -> Self {
+        let object = create(context: context)
         if attributes.count > 0 {
-            object.setValuesForKeysWithDictionary(attributes)
+            object.setValuesForKeys(attributes)
         }
         return object
     }
     
-    public class func findFirstOrCreate<T: NSManagedObject>(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, error: NSErrorPointer = nil) -> T {
-        return self.findFirstOrCreateWithPredicate(NSPredicate(value: true)/* XXX extract var ***/, context: context)
+    public class func findFirstOrCreate<T: NSManagedObject>(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, error: NSErrorPointer? = nil) -> T {
+        return self.findFirstOrCreate(with: NSPredicate(value: true)/* XXX extract var ***/, context: context)
     }
     
-    public class func findFirstOrCreateWithPredicate<T: NSManagedObject>(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> T {
+    public class func findFirstOrCreate<T: NSManagedObject>(with predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> T {
         
-        let fetchRequest = self.createFetchRequest(predicate)
+        let fetchRequest: NSFetchRequest<T> = self.createFetchRequest(predicate)
         fetchRequest.fetchLimit = 1
         fetchRequest.entity = pls_entity(context)
         
         var fetchedObjects: [AnyObject]?
-        context.performBlockAndWait({ () -> Void in
+        context.performAndWait({ () -> Void in
             fetchedObjects = self.fetch(fetchRequest, context: context, errorHandler: errorHandler)
         })
-        if let array = fetchedObjects, firstObject = array.first as? T {
+        if let array = fetchedObjects, let firstObject = array.first as? T {
             return firstObject
         }
-        let object: T = (create(context) as? T)!
+        let object: T = (create(context:context) as? T)!
         return object
     }
 
     //MARK: context method
     
-    public func deleteObject(errorHandler: ErrorHandler? = nil) -> Bool {
+    public func deleteObject(_ errorHandler: ErrorHandler? = nil) -> Bool {
         var error: NSError?
         do {
             try self.validateForDelete()
-            self.managedObjectContext?.deleteObject(self)
+            self.managedObjectContext?.delete(self)
             return true
         } catch let error1 as NSError {
             error = error1
@@ -90,24 +91,32 @@ public extension NSManagedObject {
         return false
     }
 
-    public class func deleteAll(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) {
-        if let objects = self.all(context, errorHandler: errorHandler) {
+    public class func deleteAll(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
+        var result = 0
+        if let objects: [NSManagedObject] = self.all(context: context, errorHandler: errorHandler) {
             for o in objects {
-                o.deleteObject(errorHandler)
+                if o.deleteObject(errorHandler) {
+                    result += 1
+                }
             }
         }
+        return result
     }
     
-    public class func deleteAllWithPredicate(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) {
-        if let objects = self.find(predicate, context: context, errorHandler: errorHandler) {
+    public class func deleteAll(for predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
+        var result = 0
+        if let objects: [NSManagedObject] = self.find(for: predicate, context: context, errorHandler: errorHandler) {
             for o in objects {
-                o.deleteObject(errorHandler)
+                if o.deleteObject(errorHandler) {
+                    result += 1
+                }
             }
         }
+        return result
     }
 
     public func save(errorHandler: ErrorHandler? = nil) -> Bool {
-        if let context = self.managedObjectContext where context.hasChanges {
+        if let context = self.managedObjectContext , context.hasChanges {
             do {
                 try context.save()
                 return true
@@ -123,7 +132,7 @@ public extension NSManagedObject {
         var error: NSError?
         do {
             try self.validateForInsert()
-            context.insertObject(self)
+            context.insert(self)
         } catch let error1 as NSError {
             error = error1
         }
@@ -132,18 +141,18 @@ public extension NSManagedObject {
 
     //MARK: fetch
     
-    public class func all(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [NSManagedObject]? {
+    public class func all<ResultType : NSFetchRequestResult>(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [ResultType]? {
         return self.fetch(self.createFetchRequest(), context: context, errorHandler: errorHandler)
     }
 
-    public class func find(predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [NSManagedObject]? {
-        let request = self.createFetchRequest(predicate)
+    public class func find<ResultType : NSFetchRequestResult>(for predicate: NSPredicate, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [ResultType]? {
+        let request: NSFetchRequest<ResultType> = self.createFetchRequest(predicate)
         return self.fetch(request, context: context, errorHandler: errorHandler)
     }
     
-    public class func fetch(request: NSFetchRequest, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [NSManagedObject]? {
+    public class func fetch<ResultType : NSFetchRequestResult>(_ request: NSFetchRequest<ResultType>, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [ResultType]? {
         do {
-            return try context.executeFetchRequest(request) as? [NSManagedObject]
+            return try context.fetch(request)
         } catch let error as NSError {
             CoreDataStack.handleError(context, error: error, errorHandler: errorHandler)
         } catch {
@@ -152,20 +161,23 @@ public extension NSManagedObject {
         return nil
     }
     
-    public class func countFetchRequest(request: NSFetchRequest, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
-        var error: NSError?
-        let result = context.countForFetchRequest(request, error: &error)
-        CoreDataStack.handleError(context, error: error, errorHandler: errorHandler)
-        return result
+    public class func count<ResultType : NSFetchRequestResult>(for request: NSFetchRequest<ResultType>, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
+        do {
+            let result = try context.count(for: request)
+            return result
+        } catch(let error) {
+            CoreDataStack.handleError(context, error: error, errorHandler: errorHandler)
+        }
+        return 0
     }
 
-    public class func count(predicate : NSPredicate? = nil, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
-        let fetchRequest = self.createFetchRequest(predicate)
+    public class func count(_ predicate: NSPredicate? = nil, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> Int {
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = self.createFetchRequest(predicate)
         fetchRequest.includesPropertyValues = false
         fetchRequest.includesSubentities = false
         fetchRequest.propertiesToFetch = []
 
-        return countFetchRequest(fetchRequest, context:context, errorHandler: errorHandler)
+        return count(for: fetchRequest, context:context, errorHandler: errorHandler)
     }
 
 }
@@ -173,30 +185,30 @@ public extension NSManagedObject {
 // MARK: NSExpression(forFunction)
 public extension NSManagedObject {
     
-    public class func function(function: String, fieldName: [String], predicate : NSPredicate? = nil, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [Double] {
+    public class func function(_ function: String, fieldName: [String], predicate : NSPredicate? = nil, context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, errorHandler: ErrorHandler? = nil) -> [Double] {
         
         var expressionsDescription = [NSExpressionDescription]()
         for field in fieldName{
             let expression = NSExpression(forKeyPath: field)
             let expressionDescription = NSExpressionDescription()
             expressionDescription.expression = NSExpression(forFunction: function, arguments: [expression])
-            expressionDescription.expressionResultType = NSAttributeType.DoubleAttributeType
+            expressionDescription.expressionResultType = NSAttributeType.doubleAttributeType
             expressionDescription.name = field
             expressionsDescription.append(expressionDescription);
         }
 
-        let fetchRequest = self.createFetchRequest(predicate)
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = self.createFetchRequest(predicate)
         fetchRequest.propertiesToFetch = expressionsDescription
-        fetchRequest.resultType = NSFetchRequestResultType.DictionaryResultType
+        fetchRequest.resultType = NSFetchRequestResultType.dictionaryResultType
         var results = [AnyObject]();
         var resultValue = [Double]();
-        context.performBlockAndWait({ () -> Void in
+        context.performAndWait({ () -> Void in
             do {
-                results = (try context.executeFetchRequest(fetchRequest)) as! [NSDictionary];
+                results = (try context.fetch(fetchRequest)) as! [NSDictionary];
                 var tempResult = [Double]()
                 for result in results{
                     for field in fieldName{
-                        let value = result.valueForKey(field) as! Double
+                        let value = result.value(forKey: field) as! Double
                         tempResult.append(value)
                     }
                 }
@@ -208,38 +220,38 @@ public extension NSManagedObject {
         return resultValue
     }
     
-    public class func sum(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
+    public class func sum(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
         return function("sum:", fieldName: fieldName, predicate: predicate, context: context, errorHandler: errorHandler)
     }
     
-    public class func sum(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
+    public class func sum(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
         let results = sum(context, fieldName: [fieldName], predicate: predicate, errorHandler: errorHandler)
         return results.isEmpty ? 0 : results[0]
     }
     
-    public class func max(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
+    public class func max(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
         return function("max:", fieldName: fieldName, predicate: predicate, context: context, errorHandler: errorHandler)
     }
     
-    public class func max(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
+    public class func max(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
         let results = max(context, fieldName: [fieldName], predicate: predicate, errorHandler: errorHandler)
         return results.isEmpty ? 0 : results[0]
     }
     
-    public class func min(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
+    public class func min(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
         return function("min:", fieldName: fieldName, predicate: predicate, context: context, errorHandler: errorHandler)
     }
     
-    public class func min(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
+    public class func min(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
         let results = min(context, fieldName: [fieldName], predicate: predicate, errorHandler: errorHandler)
         return results.isEmpty ? 0 : results[0]
     }
     
-    public class func avg(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
+    public class func avg(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: [String], predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> [Double] {
         return function("average:", fieldName: fieldName, predicate: predicate, context: context, errorHandler: errorHandler)
     }
     
-    public class func avg(context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
+    public class func avg(_ context: NSManagedObjectContext = NSManagedObjectContext.defaultContext, fieldName: String, predicate : NSPredicate? = nil, errorHandler: ErrorHandler? = nil) -> Double! {
         let results = avg(context, fieldName: [fieldName], predicate: predicate, errorHandler: errorHandler)
         return results.isEmpty ? 0 : results[0]
     }

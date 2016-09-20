@@ -18,8 +18,8 @@ public extension NSManagedObjectContext {
         return CoreDataStack.defaultStack.managedObjectContext
     }
 
-    private struct Key {
-        static let coreDataStack = UnsafePointer<Void>(bitPattern: Selector("coreDataStack").hashValue)
+    fileprivate struct Key {
+        static let coreDataStack = UnsafeRawPointer(bitPattern: Selector(("coreDataStack")).hashValue)
     }
 
     internal (set) var coreDataStack: CoreDataStack? {
