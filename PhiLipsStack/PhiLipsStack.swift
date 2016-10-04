@@ -11,11 +11,15 @@ import CoreData
 
 open class CoreDataStack {
     
+    open var log: (String) -> Void = { message in
+        print(message)
+    }
+    
     // MARK: instances
     open static var sqliteStack = CoreDataStack(storeType: .sqLite, storeURL: CoreDataStack.sqliteStoreURL)
     open static var inMemoryStack = CoreDataStack(storeType: .inMemory, storeURL: nil)
     
-    open static var defaultStack: CoreDataStack = CoreDataStack.sqliteStack
+    open static var `default`: CoreDataStack = CoreDataStack.sqliteStack
     
     // MARK: attributes
     open let storeType: CoreDataStoreType
@@ -54,67 +58,70 @@ open class CoreDataStack {
 
     // MARK: Core Data stack
     
-    open lazy var managedObjectContext: NSManagedObjectContext! = {
-        if let coordinator = self.persistentStoreCoordinator {
-            var managedObjectContext = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.mainQueueConcurrencyType)
-            managedObjectContext.coreDataStack = self
-            managedObjectContext.persistentStoreCoordinator = coordinator
-            return managedObjectContext
-        }
-        return nil
-        }()
+    open lazy var applicationDocumentsDirectory: Foundation.URL = {
+        // The directory the application uses to store the Core Data store file. This code uses a directory named "com.apple.toolsQA.CocoaApp_CD" in the user's Application Support directory.
+        let urls = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+        let appSupportURL = urls[urls.count - 1]
+        return appSupportURL.appendingPathComponent("com.apple.toolsQA.CocoaApp_CD")
+    }()
+    
+    open lazy var managedObjectModel: NSManagedObjectModel = {
+        // The managed object model for the application. This property is not optional. It is a fatal error for the application not to be able to find and load its model.
+        let modelURL = Bundle.main.url(forResource: "\(self.modelName).momd/\(self.modelName)", withExtension: "mom")!
+        return NSManagedObjectModel(contentsOf: modelURL)!
+    }()
+
     
     open lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator? = {
-        if let managedObjectModel = self.managedObjectModel {
+        let managedObjectModel = self.managedObjectModel
         
-            var coordinator: NSPersistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
-            var error: NSError? = nil
+        var coordinator: NSPersistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
+        var error: NSError? = nil
+        
+        var options = CoreDataStack.storeOptions(self.autoMigrate)
+        do {
+            try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
+        } catch var error2 as NSError {
+            error = error2
+            self.log("Unresolved error \(error), \(error!.userInfo)")
             
-            var options = CoreDataStack.storeOptions(self.autoMigrate)
-            do {
-                try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
-            } catch var error2 as NSError {
-                error = error2
-                self.log("Unresolved error \(error), \(error!.userInfo)")
+            // Report any error we got.
+            self.lastError = self.createInitError(error)
+            
+            if self.removeIncompatibleStore && self.removeStore() {
+                self.log("Incompatible model version has been removed \(self.storeURL!.lastPathComponent)")
+                self.log("Will recreate store")
                 
-                // Report any error we got.
-                self.lastError = self.createInitError(error)
-                
-                if self.removeIncompatibleStore && self.removeStore() {
-                    self.log("Incompatible model version has been removed \(self.storeURL!.lastPathComponent)")
-                    self.log("Will recreate store")
-                    
-                    options = CoreDataStack.storeOptions()
-                    do {
-                        try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
-                    } catch var error1 as NSError {
-                        error = error1
-                        self.lastError = self.createInitError(error)
-                        self.log("Failed to recreate store, \(error), \(error!.userInfo)")
-                        return nil
-                    } catch {
-                        fatalError()
-                    }
-                    self.log("Did recreate store")
-                    return coordinator
+                options = CoreDataStack.storeOptions()
+                do {
+                    try coordinator.addPersistentStore(ofType: self.storeType.key, configurationName: nil, at: self.storeURL, options: options)
+                } catch var error1 as NSError {
+                    error = error1
+                    self.lastError = self.createInitError(error)
+                    self.log("Failed to recreate store, \(error), \(error!.userInfo)")
+                    return nil
+                } catch {
+                    fatalError()
                 }
-                
-                return nil
-            } catch {
-                fatalError()
+                self.log("Did recreate store")
+                return coordinator
             }
-            return coordinator
+            
+            return nil
+        } catch {
+            fatalError()
         }
-        return nil
-        }()
-
-    open lazy var managedObjectModel: NSManagedObjectModel? = {
-        self.modelLoaded = true
-        if let modelURL = self.modelBundle.url(forResource: "\(self.modelName).momd/\(self.modelName)", withExtension: "mom") {
-                return NSManagedObjectModel(contentsOf: modelURL)
-        }
-        return nil
-        }()
+        return coordinator
+    }()
+    
+    open lazy var managedObjectContext: NSManagedObjectContext = {
+        // Returns the managed object context for the application (which is already bound to the persistent store coordinator for the application.) This property is optional since there are legitimate error conditions that could cause the creation of the context to fail.
+        let coordinator = self.persistentStoreCoordinator
+        var managedObjectContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        managedObjectContext.persistentStoreCoordinator = coordinator
+        managedObjectContext.coreDataStack = self
+        return managedObjectContext
+    }()
 
     // MARK: handle errors
     
@@ -147,21 +154,20 @@ open class CoreDataStack {
     }
 
     // MARK: Core Data Saving Support
-
     open func save(_ force: Bool = false, errorHandler: ErrorHandler? = nil) -> Bool {
-        if let moc = self.managedObjectContext , (moc.hasChanges || force){
-            var error: NSError?
-            let result: Bool
-            do {
-                try moc.save()
-                result = true
-            } catch let error1 as NSError {
-                error = error1
-                result = false
-            }
-            CoreDataStack.handleError(moc, error: error, errorHandler: errorHandler)
-            return result
+        // Performs the save action for the application, which is to send the save: message to the application's managed object context. Any encountered errors are presented to the user.
+        if !managedObjectContext.commitEditing() {
+            log("\(NSStringFromClass(type(of: self))) unable to commit editing before saving")
         }
+        if managedObjectContext.hasChanges || force {
+            do {
+                try managedObjectContext.save()
+            } catch {
+                CoreDataStack.handleError(managedObjectContext, error: error, errorHandler: errorHandler)
+            }
+        }
+        
+        
         return false
     }
 
@@ -185,11 +191,9 @@ open class CoreDataStack {
    /* Delete all managed object */
     func deleteAll() -> Int {
         var result = 0
-        if let mom = managedObjectModel, let moc = managedObjectContext {
-            for entity in mom.entities {
-                if let entityType = NSClassFromString(entity.managedObjectClassName) as? NSManagedObject.Type {
-                    result = result + entityType.deleteAll(context: moc)
-                }
+        for entity in managedObjectModel.entities {
+            if let entityType = NSClassFromString(entity.managedObjectClassName) as? NSManagedObject.Type {
+                result = result + entityType.deleteAll(context: managedObjectContext)
             }
         }
         return result
@@ -199,46 +203,41 @@ open class CoreDataStack {
     
     open func managedObjectForURIRepresentation(_ uri: URL) -> NSManagedObject? {
         if let psc = self.persistentStoreCoordinator,
-            let objectID = psc.managedObjectID(forURIRepresentation: uri),
-            let moc = managedObjectContext
+            let objectID = psc.managedObjectID(forURIRepresentation: uri)
         {
-            return moc.object(with: objectID)
+            return managedObjectContext.object(with: objectID)
         }
         return nil
     }
 
     func refreshObjects(objectIDS: [NSManagedObjectID], mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
-        if let moc = managedObjectContext {
-            for objectID in objectIDS {
-                var error: NSError?
-                moc.performAndWait({ () -> Void in
-                    do {
-                        let object = try moc.existingObject(with: objectID)
-                        if !object.isFault && error == nil {
-                            moc.refresh(object, mergeChanges: mergeChanges)
-                        } else {
-                            self.handleError(error, errorHandler: errorHandler)
-                        }
-                    } catch let error1 as NSError {
-                        error = error1
-                    } catch {
-                        fatalError()
+        for objectID in objectIDS {
+            var error: NSError?
+            managedObjectContext.performAndWait{ () -> Void in
+                do {
+                    let object = try self.managedObjectContext.existingObject(with: objectID)
+                    if !object.isFault && error == nil {
+                        self.managedObjectContext.refresh(object, mergeChanges: mergeChanges)
+                    } else {
+                        self.handleError(error, errorHandler: errorHandler)
                     }
-                })
+                } catch let error1 as NSError {
+                    error = error1
+                } catch {
+                    fatalError()
+                }
             }
         }
     }
     
     func refreshAllObjects(mergeChanges: Bool, errorHandler: ErrorHandler? = nil) {
-        if let moc = managedObjectContext {
-            var objectIDS = [NSManagedObjectID]()
-            for managedObject in moc.registeredObjects {
-                objectIDS.append(managedObject.objectID)
-            }
-            self.refreshObjects(objectIDS: objectIDS, mergeChanges: mergeChanges, errorHandler: errorHandler)
+        var objectIDS = [NSManagedObjectID]()
+        for managedObject in managedObjectContext.registeredObjects {
+            objectIDS.append(managedObject.objectID)
         }
+        self.refreshObjects(objectIDS: objectIDS, mergeChanges: mergeChanges, errorHandler: errorHandler)
     }
-
+    
     // MARK: log
     internal func log(_ message: String) {
         if verbose {
@@ -325,8 +324,8 @@ open class CoreDataStack {
         return false
     }
     
-    fileprivate class func buildUserInfo(_ description: String = "", failureReason: String = "", recoverySuggestion: String = "", error: NSError? = nil) -> [String : AnyObject] {
-        let dict: [String : AnyObject] = [
+    fileprivate class func buildUserInfo(_ description: String = "", failureReason: String = "", recoverySuggestion: String = "", error: NSError? = nil) -> [String : Any] {
+        let dict: [String : Any] = [
             NSLocalizedDescriptionKey : description as AnyObject,
             NSLocalizedFailureReasonErrorKey : failureReason as AnyObject,
             NSLocalizedRecoverySuggestionErrorKey : recoverySuggestion as AnyObject,

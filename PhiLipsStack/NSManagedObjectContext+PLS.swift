@@ -14,8 +14,8 @@ import CoreData
 */
 public extension NSManagedObjectContext {
 
-    public static var defaultContext: NSManagedObjectContext {
-        return CoreDataStack.defaultStack.managedObjectContext
+    public static var `default`: NSManagedObjectContext {
+        return CoreDataStack.default.managedObjectContext
     }
 
     fileprivate struct Key {
