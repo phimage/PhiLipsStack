@@ -65,13 +65,14 @@ open class CoreDataStack {
         return appSupportURL.appendingPathComponent("com.apple.toolsQA.CocoaApp_CD")
     }()
     
+    open var modelURL: URL? {
+        return Bundle.main.url(forResource: "\(self.modelName).momd/\(self.modelName)", withExtension: "mom")
+    }
     open lazy var managedObjectModel: NSManagedObjectModel = {
         // The managed object model for the application. This property is not optional. It is a fatal error for the application not to be able to find and load its model.
-        let modelURL = Bundle.main.url(forResource: "\(self.modelName).momd/\(self.modelName)", withExtension: "mom")!
-        return NSManagedObjectModel(contentsOf: modelURL)!
+        return NSManagedObjectModel(contentsOf: self.modelURL!)!
     }()
 
-    
     open lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator? = {
         let managedObjectModel = self.managedObjectModel
         
