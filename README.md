@@ -1,3 +1,5 @@
+(deprecated, please do not use)
+
 # PhiLipsStack - ϕ:lips: - embrace [CoreData](https://developer.apple.com/library/ios/documentation/DataManagement/Devpedia-CoreData/coreDataOverview.html#//apple_ref/doc/uid/TP40010398-CH28-SW1)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat
             )](http://mit-license.org) [![Platform](http://img.shields.io/badge/platform-iOS/MacOS-lightgrey.svg?style=flat
